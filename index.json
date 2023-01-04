@@ -41,16 +41,6 @@
       "md5": "c4a2b8bfb6e6103ad0c8615fb6602bbe"
     },
     {
-      "name": "Foxaholic",
-      "fileName": "Foxaholic",
-      "imageURL": "https://github.com/shosetsuorg/extensions/raw/dev/icons/Foxaholic.png",
-      "id": 173,
-      "lang": "en",
-      "ver": "2.1.1",
-      "libVer": "1.0.0",
-      "md5": "c5977c9ba48c5115426fb3010cc65894"
-    },
-    {
       "name": "Central Novel",
       "fileName": "CentralNovel",
       "id": 227675,
