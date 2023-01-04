@@ -55,10 +55,10 @@ end
 
 local function parseListing(listingURL)
 	local doc = GETDocument(listingURL)
-	return map(doc:select(".wp-block-image.size-full > a"), function(v)
+	return map(doc:selectFirst("figure.wp-block-gallery"):select("figure.wp-block-image > a"), function(v)
 		if v ~= nil then
 			return Novel {
-				title = v:parent():selectFirst("figcaption"):text(),
+				title = "",
 				link = shrinkURL(v:attr("href")),
 				imageURL = v:selectFirst("img"):attr("data-orig-file")
 			}
