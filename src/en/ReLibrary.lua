@@ -1,13 +1,35 @@
 -- {"id":5252,"ver":"1.0.0","libVer":"1.0.0","author":"Maix","repo":"https://github.com/Maix0/Shosetsu_extensions","dep":[]}
 
-local baseURL = "https://re-library.com"
+local baseURL = "https://re-library.com/"
+local baseURLMatches = "^" .. string.gsub(baseURL, "%p", "%%%1")
 local settings = {}
+
+print(baseURLMatches)
 
 local function tableConcat(t1, t2)
     for i = 1, #t2 do
         t1[#t1 + 1] = t2[i]
     end
     return t1
+end
+
+--- @param url string
+--- @return string
+local function shrinkURL(url)
+    --print("==================================================")
+    --print("SHRINK: " .. url)
+    --print("TO    : " .. url:gsub(baseURLMatches, ""))
+    --print("==================================================")
+    return url:gsub(baseURLMatches, "")
+end
+
+--- @param url string
+--- @return string
+local function expandURL(url)
+    --print("==================================================")
+    --print("EXPAND: " .. url)
+    --print("==================================================")
+    return baseURL .. url
 end
 
 --- @param o ArrayList | table
@@ -17,7 +39,6 @@ local function filterNil(o)
 
     if type(o) == "table" then
         for _, v in ipairs(o) do
-            print(v)
             if v then
                 j = j + 1
                 t[j] = v
@@ -26,7 +47,6 @@ local function filterNil(o)
     else
         for i = 0, o:size() - 1 do
             local v = o:get(i)
-            print(v)
             if v then
                 j = j + 1
                 t[j] = v
@@ -55,6 +75,7 @@ end
 --- @param novelURL string
 --- @return NovelInfo
 local function parseNovel(novelURL)
+    print(novelURL)
     local doc = GETDocument(novelURL)
 
     local title = doc:selectFirst("h1.entry-title"):text()
@@ -108,41 +129,45 @@ local function parseNovel(novelURL)
     return novel
 end
 
---- @param filters table @of applied filter values [QUERY] is the search query, may be empty
+--- @param data table @of applied filter values [QUERY] is the search query, may be empty
 --- @return Novel[]
 local function search(data)
-    local page1 = GETDocument(baseURL .. "/translations/")
+    local page1 = GETDocument(expandURL("translations/"))
 
     local all1 = map(page1:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
         local titlePrefixed = anchor:text()
         return Novel {
             title = (titlePrefixed:sub(0, #"* ") == "* ") and titlePrefixed:sub(#"* " + 1) or titlePrefixed,
             imageURL = "",
-            link = anchor:attr("href")
+            link = shrinkURL(anchor:attr("href"))
         }
     end)
 
-    local page2 = GETDocument(baseURL .. "/original/")
-    local all2 = map(page2:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
-        local titlePrefixed = anchor:text()
-        return Novel {
-            title = (titlePrefixed:sub(0, #"* ") == "* ") and titlePrefixed:sub(#"* " + 1) or titlePrefixed,
-            imageURL = "",
-            link = anchor:attr("href")
-        }
-    end)
-    print(#all1)
-    print(#all2)
-
+    --local page2 = GETDocument(expandURL("original/"))
+    --local all2 = map(page2:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
+    --    local titlePrefixed = anchor:text()
+    --    return Novel {
+    --        title = (titlePrefixed:sub(0, #"* ") == "* ") and titlePrefixed:sub(#"* " + 1) or titlePrefixed,
+    --        imageURL = "",
+    --        link = shrinkURL(anchor:attr("href"))
+    --    }
+    --end)
+    local all2 = {}
     local allNovels = filterNil(tableConcat(all1, all2))
 
-    print(#allNovels)
-
-    print("QUERY: " .. data[0]:lower())
-    return filter(tableConcat(all1, all2), function(novel)
-        print("TITLE: " .. novel:getTitle():lower())
+    return
+    --map(
+    filter(allNovels, function(novel)
         return string.find(novel:getTitle():lower(), data[0]:lower())
     end)
+    --,
+    --
+    --        function(l)
+    --            print(l)
+    --            return l
+    --        end
+    --
+    --)
 
 end
 
@@ -150,6 +175,10 @@ return {
     id = 9999,
     name = "Re:Library",
     baseURL = baseURL,
+
+    shrinkURL = shrinkURL,
+    expandURL = expandURL,
+    parseNovel = parseNovel,
 
     -- Optional values to change
     imageURL = "",
@@ -159,32 +188,32 @@ return {
 
     -- Must have at least one value
     listings = {
-        Listing("Translation", false, function(data)
-            local page = GETDocument(baseURL .. "/translations/")
+        Listing("Translation", false, function(_)
+            local page = GETDocument(expandURL("translations/"))
             local all = map(page:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
                 local titlePerfixed = anchor:text()
                 Novel {
                     title = (titlePerfixed:sub(0, #" *") == " *") and titlePerfixed:sub(#" *" + 1) or titlePerfixed,
                     imageURL = "",
-                    link = anchor:attr("href")
+                    link = shrinkURL(anchor:attr("href"))
                 }
             end)
 
             return filterNil(all)
         end),
-        Listing("Original Work", false, function(data)
-            local page = GETDocument(baseURL .. "/original/")
-            local all = map(page:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
-                local titlePerfixed = anchor:text()
-                Novel {
-                    title = (titlePerfixed:sub(0, #" *") == " *") and titlePerfixed:sub(#" *" + 1) or titlePerfixed,
-                    imageURL = "",
-                    link = anchor:attr("href")
-                }
-            end)
-
-            return filterNil(all)
-        end),
+        --Listing("Original Work", false, function(data)
+        --    local page = GETDocument(expandURL("original/"))
+        --    local all = map(page:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
+        --        local titlePerfixed = anchor:text()
+        --        Novel {
+        --            title = (titlePerfixed:sub(0, #" *") == " *") and titlePerfixed:sub(#" *" + 1) or titlePerfixed,
+        --            imageURL = "",
+        --            link = anchor:attr("href")
+        --        }
+        --    end)
+        --
+        --    return filterNil(all)
+        --end),
     },
 
     -- Optional if usable
@@ -193,9 +222,10 @@ return {
     settings = {
     },
 
+
     -- Default functions that have to be set
     getPassage = getPassage,
-    parseNovel = parseNovel,
+
     search = search,
     chapterType = ChapterType.HTML,
     updateSetting = function(id, value)
