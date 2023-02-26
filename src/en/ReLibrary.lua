@@ -107,9 +107,8 @@ local function search(data)
 
     local all1 = getAllNovelFromPage("translation")
     -- Uncomment this if you want to also search on the "original" category
-    -- local all2 = getAllNovelFromPage("original")
+    local all2 = getAllNovelFromPage("original")
 
-    local all2 = {}
     local allNovels = flatten({ all1, all2 })
 
     return filter(allNovels, function(novel)
