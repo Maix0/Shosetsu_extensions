@@ -1,7 +1,7 @@
 -- {"id":5252,"ver":"1.0.0","libVer":"1.0.0","author":"Maix","repo":"https://github.com/Maix0/Shosetsu_extensions","dep":[]}
 
 local baseURL = "https://re-library.com/"
-
+local ongoingTitlePrefix = "* "
 --- @param url string
 --- @return string
 local function shrinkURL(url)
@@ -12,6 +12,29 @@ end
 --- @return string
 local function expandURL(url)
     return baseURL .. url
+end
+
+--- @param page_type string @only "translations" is used for now
+--- @return Novel[]
+local function getAllNovelFromPage(page_type)
+    local page = GETDocument(expandURL(page_type))
+
+    local all = map(page:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
+        local titlePrefixed = anchor:text()
+        -- Non-Completed novels have the "* " prefix
+        local title = (titlePrefixed:sub(0, #ongoingTitlePrefix) == ongoingTitlePrefix) and titlePrefixed:sub(#ongoingTitlePrefix + 1) or titlePrefixed;
+        return Novel {
+            title = title,
+            imageURL = "",
+            link = shrinkURL(anchor:attr("href") or "")
+        }
+    end)
+
+    print(#all)
+    return filter(all, function(e)
+        print(e)
+        return e ~= nil
+    end)
 end
 
 --- @param chapterURL string
@@ -36,19 +59,23 @@ local function parseNovel(novelURL)
 
     local title = doc:selectFirst("h1.entry-title"):text()
 
-    local imageLink = doc:selectFirst("div.entry-content > table > tbody > tr > td > img"):attr("src")
-    local summary = table.concat(map(doc:select("div.entry-content > p"), function(p)
-        return p:text()
-    end), "\n")
+    local imageLink = doc:selectFirst("div.entry-content > table.rounded > tbody > tr > td > img"):attr("src")
+    local summary = table.concat(map(doc:select("div.entry-content > p"),
+            function(p)
+                return p:text()
+            end), "\n")
     local order = 0
 
     local chapterList = map(doc:select("div.entry-content > div > div"), function(elem)
         local divList = elem:children()
+        if divList:size() == 0 then
+            return {}
+        end
         local collectionName = divList:get(0):text()
         local chap_list_per_volume = map(divList:select("ul > li > a"), function(e)
             local chapInstance = NovelChapter {
                 order = order,
-                link = shrinkURL(e:attr("href")),
+                link = shrinkURL(e:attr("href") or ""),
                 title = collectionName .. " - " .. e:text(),
                 release = ""
             }
@@ -77,37 +104,15 @@ end
 --- @param data table @of applied filter values [QUERY] is the search query, may be empty
 --- @return Novel[]
 local function search(data)
-    local page1 = GETDocument(expandURL("translations/"))
 
-    local all1 = map(page1:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
-        local titlePrefixed = anchor:text()
-        return Novel {
-            title = (titlePrefixed:sub(0, #"* ") == "* ") and titlePrefixed:sub(#"* " + 1) or titlePrefixed, -- Non-Completed novels have the "* " prefix
-            imageURL = "",
-            link = shrinkURL(anchor:attr("href"))
-        }
-    end)
-
+    local all1 = getAllNovelFromPage("translation")
     -- Uncomment this if you want to also search on the "original" category
-
-    --local page2 = GETDocument(expandURL("original/"))
-    --local all2 = map(page2:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
-    --    local titlePrefixed = anchor:text()
-    --    return Novel {
-    --        title = (titlePrefixed:sub(0, #"* ") == "* ") and titlePrefixed:sub(#"* " + 1) or titlePrefixed,
-    --        imageURL = "",
-    --        link = shrinkURL(anchor:attr("href"))
-    --    }
-    --end)
+    -- local all2 = getAllNovelFromPage("original")
 
     local all2 = {}
-    local allNovels = filter(flatten({ all1, all2 }), function(e)
-        return e ~= nil
-    end)
+    local allNovels = flatten({ all1, all2 })
 
-    return
-    --map(
-    filter(allNovels, function(novel)
+    return filter(allNovels, function(novel)
         return string.find(novel:getTitle():lower(), data[0]:lower())
     end)
 
@@ -131,36 +136,13 @@ return {
 
     listings = {
         Listing("Translation", false, function(_)
-            local page = GETDocument(expandURL("translations/"))
-            local all = map(page:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
-                local titlePrefixed = anchor:text()
-                return Novel {
-                    title = (titlePrefixed:sub(0, #" *") == " *") and titlePrefixed:sub(#" *" + 1) or titlePrefixed,
-                    imageURL = "",
-                    link = shrinkURL(anchor:attr("href"))
-                }
-            end)
-
-            return filter(all, function(e)
-                return e ~= nil
-            end)
+            print("hello")
+            return getAllNovelFromPage("translation")
         end),
         -- Uncomment this to have a new listing for "original" novels
 
-        --Listing("Translation", false, function(_)
-        --    local page = GETDocument(expandURL("original/"))
-        --    local all = map(page:select(".entry-content >  table >  tbody > tr > td > p > a"), function(anchor)
-        --        local titlePrefixed = anchor:text()
-        --        return Novel {
-        --            title = (titlePrefixed:sub(0, #" *") == " *") and titlePrefixed:sub(#" *" + 1) or titlePrefixed,
-        --            imageURL = "",
-        --            link = shrinkURL(anchor:attr("href"))
-        --        }
-        --    end)
-        --
-        --    return filter(all, function(e)
-        --        return e ~= nil
-        --    end)
+        --Listing("Original", false, function(_)
+        --    return getAllNovelFromPage("original")
         --end),
     },
 
